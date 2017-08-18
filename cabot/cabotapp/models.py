@@ -839,6 +839,23 @@ class JenkinsStatusCheck(StatusCheck):
                 result.raw_data = status
         return result
 
+    def calculate_debounced_passing(self, recent_results, debounce=0):
+        """
+        `debounce` is the number of previous job failures we need (not including this)
+        to mark a search as passing or failing
+        Returns:
+          True if passing given debounce factor
+          False if failing
+        """
+        if not recent_results:
+            return True
+        failing_jobs = set()
+        for status_check_result in recent_results:
+            if status_check_result.succeeded:
+                return True
+            failing_jobs.add(status_check_result.job_number)
+            if len(failing_jobs) > debounce:
+                return False
 
 class StatusCheckResult(models.Model):
     """
