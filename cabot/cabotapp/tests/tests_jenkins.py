@@ -25,6 +25,7 @@ class TestGetStatus(unittest.TestCase):
     @patch("cabot.cabotapp.jenkins._get_jenkins_client")
     def test_job_passing(self, mock_jenkins):
         mock_jenkins.return_value = self.mock_client
+        self.mock_job.get_last_good_buildnumber.return_value = self.mock_build.get_number.return_value
 
         self.mock_build.is_good.return_value = True
         self.mock_job.is_queued.return_value = False
@@ -36,6 +37,7 @@ class TestGetStatus(unittest.TestCase):
             'succeeded': True,
             'job_number': 12,
             'blocked_build_time': None,
+            'consecutive_failures': 0,
             'status_code': 200
         }
         self.assertEqual(status, expected)
@@ -46,6 +48,8 @@ class TestGetStatus(unittest.TestCase):
 
         self.mock_build.is_good.return_value = False
         self.mock_job.is_queued.return_value = False
+        self.mock_build.get_number.return_value = 12
+        self.mock_job.get_last_good_buildnumber.return_value = 11
 
         status = jenkins.get_job_status('foo')
 
@@ -54,6 +58,7 @@ class TestGetStatus(unittest.TestCase):
             'succeeded': False,
             'job_number': 12,
             'blocked_build_time': None,
+            'consecutive_failures': 1,
             'status_code': 200
         }
         self.assertEqual(status, expected)
@@ -65,6 +70,8 @@ class TestGetStatus(unittest.TestCase):
 
         self.mock_build.is_good.return_value = True
         self.mock_job.is_queued.return_value = True
+        self.mock_job.get_last_good_buildnumber.return_value = 12
+
         self.mock_job._data = {
             'queueItem': {
                 'inQueueSince': float(timezone.now().strftime('%s')) * 1000
@@ -78,6 +85,7 @@ class TestGetStatus(unittest.TestCase):
             'succeeded': True,
             'job_number': 12,
             'blocked_build_time': 600,
+            'consecutive_failures': 0,
             'status_code': 200
         }
         self.assertEqual(status, expected)

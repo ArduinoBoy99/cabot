@@ -819,6 +819,7 @@ class JenkinsStatusCheck(StatusCheck):
             result.error = u'Job "%s" disabled on Jenkins' % self.name
             result.succeeded = False
         else:
+            result.consecutive_failures = status['consecutive_failures']
             if self.max_queued_build_time and status['blocked_build_time']:
                 if status['blocked_build_time'] > self.max_queued_build_time * 60:
                     result.succeeded = False
@@ -849,13 +850,15 @@ class JenkinsStatusCheck(StatusCheck):
         """
         if not recent_results:
             return True
-        failing_jobs = set()
-        for status_check_result in recent_results:
-            if status_check_result.succeeded:
-                return True
-            failing_jobs.add(status_check_result.job_number)
-            if len(failing_jobs) > debounce:
-                return False
+        # it is enough to check the most recent status check
+        last_status_check_result = recent_results[0]
+        if last_status_check_result.succeeded:
+            return True
+        elif last_status_check_result.consecutive_failures > debounce:
+            return False
+        else:
+            return True
+
 
 class StatusCheckResult(models.Model):
     """
@@ -874,6 +877,7 @@ class StatusCheckResult(models.Model):
 
     # Jenkins specific
     job_number = models.PositiveIntegerField(null=True)
+    consecutive_failures = models.PositiveIntegerField(null=True)
 
     class Meta:
         ordering = ['-time_complete']

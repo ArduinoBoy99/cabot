@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from jenkinsapi.jenkins import Jenkins
-from jenkinsapi.custom_exceptions import UnknownJob
+from jenkinsapi.custom_exceptions import UnknownJob, NoBuildData
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
@@ -25,8 +25,14 @@ def get_job_status(jobname):
         job = client.get_job(jobname)
         last_build = job.get_last_build()
 
+        try:
+            last_good_build_number = job.get_last_good_buildnumber()
+        except NoBuildData:
+            last_good_build_number = 0
+
         ret['status_code'] = 200
         ret['job_number'] = last_build.get_number()
+        ret['consecutive_failures'] = last_build.get_number() - last_good_build_number
         ret['active'] = job.is_enabled()
         ret['succeeded'] = (job.is_enabled()) and last_build.is_good()
 
